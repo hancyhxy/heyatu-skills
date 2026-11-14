@@ -61,7 +61,7 @@ Write `auto-edit/picker.json` with one slot per line that has two or more usable
 - `hint` says what to look for; `need` is how many to pick; `note` is what differs (angle, clothes, a stumble).
 - 2–8 options a slot; up to 10 slots a page.
 
-The page (`picker/vNN/index.html`) shows looping low-res clips with 选 and 放大, and a line at the bottom such as `推肩 C，聊天 J+B`. Give the user the page path; Hey Atu opens it beside the chat and on the phone. When the reply comes, look the letters up in `picker/vNN/options.json`, set those clips and times in `plan.json` (for `need` > 1, in the picked order), and confirm in one line what changed.
+The page (`picker/vNN/index.html`) shows looping low-res clips with 选 and 放大, and a line at the bottom such as `推肩 C，聊天 J+B`. Give the user the page path: Hey Atu opens it in the preview pane beside the chat and on the phone. In another agent (a terminal), also run `open "<page>"` so it opens in the browser. When the reply comes, look the letters up in `picker/vNN/options.json`, set those clips and times in `plan.json` (for `need` > 1, in the picked order), and confirm in one line what changed.
 
 ## Style
 

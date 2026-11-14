@@ -51,4 +51,4 @@ Completion: the MP4 duration matches the plan and the draft reports no missing m
 
 ## 6. Hand over and revise
 
-Tell the user in a few lines: the MP4 path, the 剪映 draft name, gaps, and what is theirs (watch, change any shot, music and effects in 剪映). Feedback starts a new round from step 3 or 4; every export is a new version and the earlier ones stay.
+Tell the user in a few lines: the MP4 path (Hey Atu previews it beside the chat; in a terminal, run `open` on it), the 剪映 draft name, gaps, and what is theirs (watch, change any shot, music and effects in 剪映). Feedback starts a new round from step 3 or 4; every export is a new version and the earlier ones stay.
