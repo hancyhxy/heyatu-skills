@@ -1,0 +1,13 @@
+Third-party parts
+
+skills/auto-edit/assets/jianying/
+  The empty-draft files and the JSON shapes of the 剪映 draft come from drafts
+  written by pyJianYingDraft (GuanYixuan/pyJianYingDraft) as packaged in
+  CapCut Mate (Hommy-master/capcut-mate), Apache License 2.0.
+
+FFmpeg (not in this repository)
+  skills/auto-edit/scripts/setup.mjs downloads static FFmpeg and ffprobe builds
+  by Martin Riedl (https://ffmpeg.martin-riedl.de), signed by Apple team
+  KU3N25YGLU, or the same files from heyatu.com. FFmpeg is licensed under the
+  GNU GPL v3 in these builds; source: https://ffmpeg.org and
+  https://git.martin-riedl.de/ffmpeg/build-script.
