@@ -8,6 +8,6 @@ skills/auto-edit/assets/jianying/
 FFmpeg (not in this repository)
   skills/auto-edit/scripts/setup.mjs downloads static FFmpeg and ffprobe builds
   by Martin Riedl (https://ffmpeg.martin-riedl.de), signed by Apple team
-  KU3N25YGLU, or the same files from heyatu.com. FFmpeg is licensed under the
+  KU3N25YGLU. FFmpeg is licensed under the
   GNU GPL v3 in these builds; source: https://ffmpeg.org and
   https://git.martin-riedl.de/ffmpeg/build-script.

@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 export const SKILL_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const BIN_DIR = path.join(SKILL_DIR, 'bin');
 export const VIDEO_EXT = new Set(['.mov', '.mp4', '.m4v', '.mkv', '.avi', '.mts', '.m2ts', '.3gp', '.webm', '.hevc']);
+export const AUDIO_EXT = new Set(['.mp3', '.m4a', '.wav', '.aac', '.flac', '.aiff', '.aif', '.ogg']);
 export const CONFIG_PATH = path.join(os.homedir(), '.config', 'heyatu', 'auto-edit.json');
 
 /** Print one JSON result and exit. Every script ends here, so Atu reads one object. */
@@ -86,6 +87,8 @@ export function probe(file) {
     fps: Math.round(fps * 1000) / 1000,
     codec: v.codec_name,
     audio: !!a,
+    transfer: v.color_transfer || 'unknown',
+    hdr: ['arib-std-b67', 'smpte2084'].includes(v.color_transfer),
     created,
     bytes: Number(j.format.size || 0),
   };
@@ -95,6 +98,14 @@ export function probe(file) {
 export function listVideos(folder) {
   return fs.readdirSync(folder, { withFileTypes: true })
     .filter(e => e.isFile() && !e.name.startsWith('.') && VIDEO_EXT.has(path.extname(e.name).toLowerCase()))
+    .map(e => path.join(folder, e.name))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
+/** Music files directly in a folder (the user drops them in beside the footage), sorted by name. */
+export function listAudio(folder) {
+  return fs.readdirSync(folder, { withFileTypes: true })
+    .filter(e => e.isFile() && !e.name.startsWith('.') && AUDIO_EXT.has(path.extname(e.name).toLowerCase()))
     .map(e => path.join(folder, e.name))
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 }
@@ -140,6 +151,26 @@ export function canDrawText(ffmpeg) {
   const r = run(ffmpeg, ['-hide_banner', '-filters'], { allowFail: true });
   return / drawtext /.test(r.stdout || '');
 }
+
+/** Labels on contact sheets and WebP loops on the picker page both work. */
+export function fullFfmpeg(ffmpeg) {
+  const r = run(ffmpeg, ['-hide_banner', '-encoders'], { allowFail: true });
+  const f = run(ffmpeg, ['-hide_banner', '-filters'], { allowFail: true }).stdout || '';
+  return canDrawText(ffmpeg) && /libwebp_anim/.test(r.stdout || '') && / zscale /.test(f) && / tonemap /.test(f);
+}
+
+/**
+ * Filters that turn an HDR clip (iPhone HLG or Dolby Vision, PQ) into SDR Rec.709 before any other filter.
+ * Without them the picture looks grey and flat. Hable is the closest to Apple's own conversion (checked 2026-11-14).
+ */
+export function toSdr(clip) {
+  return clip && clip.hdr
+    ? 'zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p,'
+    : '';
+}
+
+/** Rec.709 tags for every encoded output. */
+export const SDR_TAGS = ['-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709'];
 
 /** A font file for labels on contact sheets (system fonts on macOS). */
 export function labelFont() {

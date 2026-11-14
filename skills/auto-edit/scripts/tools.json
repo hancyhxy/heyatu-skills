@@ -3,15 +3,17 @@
   "arm64": {
    "team": "KU3N25YGLU",
    "sources": [
-    { "url": "https://heyatu.com/skills/tools/ffmpeg-9.0.2-arm64.zip", "sha256": "c8ed4c4e6978a03c485edbfe4e0a5dc2380f8a30bba5150531b31b094492d924" },
-    { "url": "https://ffmpeg.martin-riedl.de/redirect/latest/macos/arm64/release/ffmpeg.zip" }
+    {
+     "url": "https://ffmpeg.martin-riedl.de/redirect/latest/macos/arm64/release/ffmpeg.zip"
+    }
    ]
   },
   "amd64": {
    "team": "KU3N25YGLU",
    "sources": [
-    { "url": "https://heyatu.com/skills/tools/ffmpeg-9.0.2-amd64.zip", "sha256": "7c6b4125b191cbf773832dc51f424cf2b6bb7da43007d1e066f95909e47cacd4" },
-    { "url": "https://ffmpeg.martin-riedl.de/redirect/latest/macos/amd64/release/ffmpeg.zip" }
+    {
+     "url": "https://ffmpeg.martin-riedl.de/redirect/latest/macos/amd64/release/ffmpeg.zip"
+    }
    ]
   }
  },
@@ -19,15 +21,17 @@
   "arm64": {
    "team": "KU3N25YGLU",
    "sources": [
-    { "url": "https://heyatu.com/skills/tools/ffprobe-9.0.2-arm64.zip", "sha256": "fcbe839537485eaee7a7a8bc5cbc0f90d53617e80943e8a5b2e31cb851197ea6" },
-    { "url": "https://ffmpeg.martin-riedl.de/redirect/latest/macos/arm64/release/ffprobe.zip" }
+    {
+     "url": "https://ffmpeg.martin-riedl.de/redirect/latest/macos/arm64/release/ffprobe.zip"
+    }
    ]
   },
   "amd64": {
    "team": "KU3N25YGLU",
    "sources": [
-    { "url": "https://heyatu.com/skills/tools/ffprobe-9.0.2-amd64.zip", "sha256": "2322438ed2f6319a691291b247d09c69dcaa3a982460d1f269a7e1af335cfdfd" },
-    { "url": "https://ffmpeg.martin-riedl.de/redirect/latest/macos/amd64/release/ffprobe.zip" }
+    {
+     "url": "https://ffmpeg.martin-riedl.de/redirect/latest/macos/amd64/release/ffprobe.zip"
+    }
    ]
   }
  }

@@ -1,43 +1,83 @@
 #!/usr/bin/env node
-// A page for the user to choose between takes: one short preview per option, lettered A, B, C…
-//   node picker.mjs <footage> --slot S03 --title "Opening line" --options "c-02:26.3-27.6,c-14:3.0-5.2,c-15:10-12"
-// Output: <footage>/auto-edit/picker/<slot>/index.html (opens on the Mac and in Hey Atu on the phone).
+// The take picker: one page with every open choice of the cut. Each option is a looping clip,
+// your current pick is preselected, and the page writes one line for the user to send back.
+//
+//   node picker.mjs <footage>            reads auto-edit/picker.json, writes auto-edit/picker/vNN/index.html
+//
+// picker.json:
+// { "title": "Morning run · pick the takes",
+//   "slots": [
+//     { "id": "S03", "name": "推肩", "hint": "推上去→放下→再推，选 1 条", "need": 1, "current": ["A"],
+//       "options": [ { "clip": "c-07", "in": 68.9, "out": 72.8, "note": "低机位，完整一组" }, … ] } ] }
+// Options are lettered A, B, C… in order. The line reads "推肩 A，聊天 J+B".
 import fs from 'node:fs';
 import path from 'node:path';
-import { args, clipById, done, fail, loadClips, need, run } from './lib.mjs';
+import { args, clipById, done, fail, loadClips, need, readJson, run, toSdr } from './lib.mjs';
+import { nextVersion } from './plan.mjs';
 
 const opt = args();
 const footage = opt._[0];
-if (!footage || !opt.slot || !opt.options) fail('Usage: node picker.mjs <folder> --slot S03 --options "c-02:26.3-27.6,c-14:3-5"');
+if (!footage) fail('Usage: node picker.mjs <footage>  (reads auto-edit/picker.json)');
 const { dir, clips } = loadClips(footage);
-const slot = String(opt.slot).replace(/[^\w-]/g, '');
-const out = path.join(dir, 'picker', slot);
-fs.mkdirSync(out, { recursive: true });
+const spec = readJson(path.join(dir, 'picker.json'), null);
+if (!spec || !Array.isArray(spec.slots) || !spec.slots.length) fail('picker.json is missing or has no slots.', 'See the Pick takes section of assemble.md.');
 const ffmpeg = need('ffmpeg');
-const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const encoders = run(ffmpeg, ['-hide_banner', '-encoders'], { allowFail: true }).stdout || '';
+const webp = /libwebp_anim/.test(encoders);
+const root = path.join(dir, 'picker');
+const version = nextVersion(root, '');
+const out = path.join(root, version);
+fs.mkdirSync(out, { recursive: true });
+const vertical = clips.orientation !== 'horizontal';
+const [W, H] = vertical ? [216, 384] : [384, 216];
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-const options = String(opt.options).split(',').map((o, i) => {
-  const m = o.trim().match(/^([\w-]+):([\d.]+)-([\d.]+)$/);
-  if (!m) fail(`Bad option: ${o}`, 'Write each option as clip:in-out, for example c-02:26.3-27.6');
-  const clip = clipById(clips, m[1]);
-  const letter = String.fromCharCode(65 + i);
-  const file = `${letter}.mp4`;
-  run(ffmpeg, ['-nostdin', '-y', '-v', 'error', '-ss', m[2], '-t', String(Number(m[3]) - Number(m[2])), '-i', clip.path,
-    '-vf', 'scale=480:480:force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '28',
-    '-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart', path.join(out, file)]);
-  return { letter, file, clip: clip.id, name: clip.name, in: Number(m[2]), out: Number(m[3]) };
+const problems = [];
+const slots = spec.slots.map((slot, si) => {
+  const id = String(slot.id || `S${String(si + 1).padStart(2, '0')}`).replace(/[^\w-]/g, '');
+  const name = String(slot.name || id);
+  const options = (slot.options || []).map((o, i) => {
+    const letter = String.fromCharCode(65 + i);
+    const clip = clipById(clips, o.clip);
+    const a = Number(o.in), b = Number(o.out);
+    if (!(b > a) || a < 0 || b > clip.duration + 0.05) problems.push(`${name} ${letter}: ${a}–${b}s is outside ${clip.id}`);
+    const file = `${id}-${letter}.${webp ? 'webp' : 'gif'}`;
+    const len = Math.min(b - a, 6);
+    const vf = `${toSdr(clip)}fps=10,scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H}`;
+    const enc = webp ? ['-c:v', 'libwebp_anim', '-quality', '50', '-loop', '0']
+      : ['-vf', `${vf},split[x][y];[x]palettegen=max_colors=96[p];[y][p]paletteuse`, '-loop', '0'];
+    run(ffmpeg, ['-nostdin', '-y', '-v', 'error', '-ss', String(a), '-t', String(len), '-i', clip.path, '-an',
+      ...(webp ? ['-vf', vf] : []), ...enc, path.join(out, file)]);
+    return { letter, file, clip: clip.id, name: clip.name, in: a, out: b, note: String(o.note || '') };
+  });
+  if (options.length < 2) problems.push(`${name}: a slot needs at least two options`);
+  const needN = Math.max(1, Math.min(Number(slot.need || 1), options.length));
+  const current = (slot.current || ['A']).filter(l => options.some(o => o.letter === l)).slice(0, needN);
+  return { id, name, hint: String(slot.hint || ''), need: needN, current, options };
 });
+if (problems.length) fail('picker.json has problems.', problems.join('\n'));
 
-const html = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(opt.title || slot)} · 选片</title><style>
-body{margin:0;font:15px/1.5 -apple-system,"PingFang SC",sans-serif;background:#fffdf9;color:#1d1a17;padding:20px}
-h1{font-size:20px;margin:0 0 4px}p{margin:0 0 16px;color:#7a7168}
-.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
-.c{border:1px solid rgba(60,40,20,.16);border-radius:14px;overflow:hidden;background:#fff}
-.c video{width:100%;display:block;background:#000;max-height:60vh}
-.c div{padding:10px 12px}.c b{font-size:22px;margin-right:8px}.c small{color:#7a7168}
-</style></head><body><h1>${esc(opt.title || slot)}</h1><p>看完告诉阿图选哪个，比如「${slot} 选 B」。</p><div class="g">
-${options.map(o => `<div class="c"><video src="${o.file}" controls playsinline loop preload="metadata"></video><div><b>${o.letter}</b><small>${esc(o.name)} · ${o.in.toFixed(1)}–${o.out.toFixed(1)}s</small></div></div>`).join('\n')}
-</div></body></html>`;
-fs.writeFileSync(path.join(out, 'index.html'), html);
-done({ ok: true, page: path.join(out, 'index.html'), options });
+const sections = slots.map(s => `<section class="group" id="g-${s.id}" data-need="${s.need}" data-name="${esc(s.name)}">
+<h2>${esc(s.name)} <span class="count" id="count-${s.id}"></span></h2>
+${s.hint ? `<p class="hint">${esc(s.hint)}</p>` : ''}
+<div class="grid">
+${s.options.map(o => `<article class="card" data-group="${s.id}" data-label="${o.letter}">
+  <img src="./${o.file}" alt="${esc(s.name)} ${o.letter}" width="${W}" height="${H}">
+  <h3>${esc(s.name)} ${o.letter}${s.current.includes(o.letter) ? ' <span class="badge">片中现用</span>' : ''}</h3>
+  <p class="meta">${esc(o.name)} · ${o.in.toFixed(2)}s · ${(o.out - o.in).toFixed(1)}s</p>
+  ${o.note ? `<p class="note">${esc(o.note)}</p>` : ''}
+  <div class="row"><button type="button" class="pick" aria-pressed="false">选 ${o.letter}</button><button type="button" class="zoom">放大</button></div>
+</article>`).join('\n')}
+</div>
+</section>`).join('\n');
+
+const template = fs.readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'assets', 'picker.html'), 'utf8');
+const title = spec.title || '选 take';
+const defaults = Object.fromEntries(slots.map(s => [s.id, s.current]));
+fs.writeFileSync(path.join(out, 'index.html'), template.replaceAll('{{TITLE}}', esc(title)).replace('{{SECTIONS}}', sections)
+  .replace('{{DEFAULT}}', JSON.stringify(defaults)).replace('{{ASPECT}}', vertical ? '9/16' : '16/9'));
+// The answer key: letters back to clip ranges, so the reply can be applied to plan.json.
+fs.writeFileSync(path.join(out, 'options.json'), JSON.stringify(slots.map(s => ({ id: s.id, name: s.name, need: s.need, current: s.current,
+  options: s.options.map(({ letter, clip, in: a, out: b, note }) => ({ letter, clip, in: a, out: b, note })) })), null, 1) + '\n');
+done({ ok: true, page: path.join(out, 'index.html'), version, slots: slots.map(s => ({ id: s.id, name: s.name, options: s.options.length, current: s.current })),
+  next: 'Give the user the page path; they reply with the line at the bottom, for example "推肩 A，聊天 J+B". Look the letters up in options.json and update plan.json.' });

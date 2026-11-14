@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { BIN_DIR, CONFIG_PATH, SKILL_DIR, args, canDrawText, done, fail, readJson, tool } from './lib.mjs';
+import { BIN_DIR, CONFIG_PATH, SKILL_DIR, args, fullFfmpeg, done, fail, readJson, tool } from './lib.mjs';
 
 const opt = args();
 const TOOLS = readJson(path.join(SKILL_DIR, 'scripts', 'tools.json'), {});
@@ -62,9 +62,9 @@ async function install(name) {
 
 for (const name of ['ffmpeg', 'ffprobe']) {
   let found = tool(name);
-  // The contact sheets need drawtext; a system ffmpeg without it gets the Skill's own copy.
-  const weak = name === 'ffmpeg' && found && !found.startsWith(BIN_DIR) && !canDrawText(found);
-  if (weak) report.ffmpeg_without_drawtext = found;
+  // Sheets need drawtext and the picker needs WebP; a system ffmpeg without them gets the Skill's own copy.
+  const weak = name === 'ffmpeg' && found && !found.startsWith(BIN_DIR) && !fullFfmpeg(found);
+  if (weak) report.ffmpeg_missing_features = found;
   if ((!found || weak) && !opt.check) {
     try { report[`${name}_downloaded_from`] = await install(name); found = tool(name); }
     catch (e) { fail(`Cannot download ${name}: ${e.message}`, 'Check the network, then run setup.mjs again.'); }

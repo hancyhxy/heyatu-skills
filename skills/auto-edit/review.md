@@ -30,6 +30,6 @@ Write `auto-edit/review.md`: one section per clip, its stretches in time order, 
 - 11.5–12.4 camera lowered (end)
 ```
 
-For each stretch: times, what is visible, framing (close / medium / wide, selfie, top-down), and notes that affect the choice: repeated take, shaky, out of focus, someone talking, private information on screen. Mark the best take of a repeated action with ★. Describe what you see; take names and places from the user, not from guesses.
+For each stretch: times, what is visible, framing (close / medium / wide, selfie, top-down), and notes that affect the choice: repeated take, shaky, out of focus, someone talking, private information on screen. Mark the best take of a repeated action with ★ and keep every other complete take in the log: they are the options of the take picker. Describe what you see; take names and places from the user, not from guesses.
 
 Completion: every clip in `clips.json` has a section, and each section covers its full length.

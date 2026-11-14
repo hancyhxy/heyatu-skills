@@ -10,7 +10,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { args, canDrawText, clipById, done, fail, labelFont, listVideos, need, probe, readJson, run, workDir, writeJson } from './lib.mjs';
+import { args, canDrawText, toSdr, clipById, done, fail, labelFont, listAudio, listVideos, need, probe, readJson, run, workDir, writeJson } from './lib.mjs';
 
 const opt = args();
 const footage = opt._[0];
@@ -41,7 +41,7 @@ function inventory() {
   for (const file of files) {
     const st = fs.statSync(file);
     const prev = byPath.get(file);
-    const same = prev && prev.bytes === st.size && prev.mtime === st.mtimeMs;
+    const same = prev && prev.bytes === st.size && prev.mtime === st.mtimeMs && 'hdr' in prev;
     const info = same ? prev : { ...probe(file), mtime: st.mtimeMs };
     const id = prev ? prev.id : `c-${String(++next).padStart(2, '0')}`;
     const clip = { ...info, id, name: path.basename(file), path: file };
@@ -55,7 +55,13 @@ function inventory() {
   clips.sort((a, b) => Number(a.id.slice(2)) - Number(b.id.slice(2)));
   const usable = clips.filter(c => c.ok && !c.duplicate_of);
   const vertical = usable.filter(c => c.height > c.width).length >= usable.length / 2;
-  const data = { footage: path.resolve(footage), scanned: new Date().toISOString(), orientation: vertical ? 'vertical' : 'horizontal', clips };
+  const music = listAudio(footage).map(file => {
+    const r = run(need('ffprobe'), ['-v', 'error', '-print_format', 'json', '-show_format', file], { allowFail: true });
+    let duration = 0;
+    try { duration = Number(JSON.parse(r.stdout).format.duration) || 0; } catch {}
+    return { name: path.basename(file), path: file, duration: Math.round(duration * 10) / 10 };
+  });
+  const data = { footage: path.resolve(footage), scanned: new Date().toISOString(), orientation: vertical ? 'vertical' : 'horizontal', clips, music };
   writeJson(path.join(dir, 'clips.json'), data);
   return data;
 }
@@ -67,7 +73,7 @@ function tiles(clip, from, to, step, cell, out) {
   const label = font
     ? `,drawtext=fontfile='${font.replace(/'/g, "\\'")}':text='${clip.id}  %{eif\\:t+${from}\\:d}.%{eif\\:mod((t+${from})*10\\,10)\\:d}s':x=8:y=h-th-8:fontsize=${Math.round(h / 13)}:fontcolor=white:box=1:boxcolor=black@0.65:boxborderw=5`
     : '';
-  const vf = `fps=1/${step},scale=${w}:${h}:force_original_aspect_ratio=decrease,pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2:color=0x222222${label}`;
+  const vf = `${toSdr(clip)}fps=1/${step},scale=${w}:${h}:force_original_aspect_ratio=decrease,pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2:color=0x222222${label}`;
   run(ffmpeg, ['-nostdin', '-y', '-v', 'error', '-ss', String(from), '-t', String(to - from), '-i', clip.path, '-an', '-vf', vf, '-q:v', '4', path.join(out, `${clip.id}_%04d.jpg`)]);
   return fs.readdirSync(out).filter(f => f.startsWith(clip.id + '_')).sort().map(f => path.join(out, f));
 }
@@ -131,6 +137,7 @@ done({
   reviewed: data.clips.length - skipped.length,
   minutes: Math.round(data.clips.filter(c => c.ok && !c.duplicate_of).reduce((s, c) => s + c.duration, 0) / 6) / 10,
   frames: all.length,
+  music: data.music,
   sheets: sheetList,
   skipped,
 });

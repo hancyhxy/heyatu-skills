@@ -10,8 +10,15 @@ export const DEFAULT_STYLE = { caption: { size: 7, color: '#ffffff', y: -0.72, s
  * { "title": "Morning run", "canvas": { "width": 1080, "height": 1920 }, "fps": 30,
  *   "segments": [ { "id": "S01", "clip": "c-02", "in": 26.0, "out": 27.5, "fit": "fill", "volume": 1,
  *                   "caption": "text shown while this shot plays", "line": "script line it serves" } ],
+ *   "audio": "original" | "bgm" | "bgm-only" | "voiceover",
  *   "music": { "path": "/abs/song.mp3", "in": 0, "volume": 0.25 } }
  */
+export const AUDIO_MODES = {
+  original: { clip: 1, music: 0 },      // the clips' own sound only
+  bgm: { clip: 1, music: 0.25 },        // music under the clips' own sound
+  'bgm-only': { clip: 0, music: 0.8 },  // music only; clips muted
+  voiceover: { clip: 0, music: 0.12 },  // picture paced to the script; the user records the voice in 剪映
+};
 export function loadPlan(footage) {
   const { dir, clips } = loadClips(footage);
   const file = path.join(dir, 'plan.json');
@@ -26,6 +33,22 @@ export function loadPlan(footage) {
   const height = Number(plan.canvas?.height || (vertical ? long : short));
   const fps = Number(plan.fps || 30);
   if (!Array.isArray(plan.segments) || !plan.segments.length) fail('plan.json has no segments.');
+  const audio = plan.audio || (plan.music ? 'bgm' : 'original');
+  if (!AUDIO_MODES[audio]) fail(`audio must be one of ${Object.keys(AUDIO_MODES).join(', ')}`);
+  const mode = AUDIO_MODES[audio];
+  // Music: plan.music.file (a file name in the footage folder) or plan.music.path; for a music sound
+  // with no choice, the only music file in the folder.
+  const dropped = clips.music || [];
+  let music = null;
+  if (plan.music) {
+    const file = plan.music.file ? dropped.find(m => m.name === plan.music.file)?.path : plan.music.path;
+    if (!file || !fs.existsSync(file)) fail(`Music file not found: ${plan.music.file || plan.music.path}`, `Music files in the folder: ${dropped.map(m => m.name).join(', ') || 'none'}`);
+    music = { ...plan.music, path: file, in: Number(plan.music.in || 0), volume: plan.music.volume ?? mode.music };
+  } else if (audio !== 'original' && dropped.length === 1) {
+    music = { path: dropped[0].path, file: dropped[0].name, in: 0, volume: mode.music };
+  } else if (audio !== 'original' && dropped.length > 1) {
+    fail('There are several music files in the folder.', `Set "music": { "file": "<name>" } in plan.json. Files: ${dropped.map(m => m.name).join(', ')}`);
+  }
   const snap = s => Math.round(s * fps) / fps;
   const problems = [];
   let t = 0;
@@ -41,7 +64,7 @@ export function loadPlan(footage) {
     const speed = Number(sg.speed || 1);
     const dur = snap((Math.min(outS, clip.duration) - inS) / speed);
     const seg = { ...sg, id, clip, in: inS, out: Math.min(outS, clip.duration), speed, start: snap(t), duration: dur,
-      fit: sg.fit || (clip.height > clip.width === height > width ? 'fill' : 'fit'), volume: sg.volume ?? 1 };
+      fit: sg.fit || (clip.height > clip.width === height > width ? 'fill' : 'fit'), volume: sg.volume ?? mode.clip };
     t = snap(t + dur);
     return seg;
   }).filter(Boolean);
@@ -49,7 +72,7 @@ export function loadPlan(footage) {
   const captions = segments.filter(s => s.caption).map(s => ({ start: s.start, end: s.start + s.duration, text: String(s.caption) }));
   for (const c of plan.captions || []) captions.push({ start: Number(c.start), end: Number(c.end), text: String(c.text) });
   captions.sort((a, b) => a.start - b.start);
-  return { dir, clips, plan, title: plan.title || path.basename(path.resolve(footage)), width, height, fps, segments, captions, duration: t, style };
+  return { dir, clips, plan, audio, music, title: plan.title || path.basename(path.resolve(footage)), width, height, fps, segments, captions, duration: t, style };
 }
 
 /** The next free version number for files that start with prefix in a folder. */
