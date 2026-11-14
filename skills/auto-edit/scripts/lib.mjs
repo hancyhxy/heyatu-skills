@@ -48,7 +48,10 @@ export function tool(name) {
 
 export function need(name) {
   const t = tool(name);
-  if (!t) fail(`${name} is missing.`, `Run: node "${path.join(SKILL_DIR, 'scripts/setup.mjs')}"`);
+  const setup = `Run: node "${path.join(SKILL_DIR, 'scripts/setup.mjs')}"`;
+  if (!t) fail(`${name} is missing.`, setup);
+  // A system ffmpeg (Homebrew's default build) lacks drawtext, WebP and HDR tone mapping.
+  if (name === 'ffmpeg' && !t.startsWith(BIN_DIR) && !fullFfmpeg(t)) fail(`This ffmpeg (${t}) lacks features Auto Edit needs.`, setup);
   return t;
 }
 
