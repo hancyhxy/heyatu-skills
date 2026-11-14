@@ -26,4 +26,4 @@ What it does: {{description}}
 
 4. Tell the user: the Skill is installed, and it is ready in a **new chat**. Then one sentence on how to start it.
 
-Source and issues: https://github.com/heyatu/skills
+Source and issues: https://github.com/hancyhxy/heyatu-skills

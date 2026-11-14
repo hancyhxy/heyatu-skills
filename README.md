@@ -1,5 +1,7 @@
 # Hey Atu Skills
 
+**🐶 [heyatu.com](https://heyatu.com) · [中文](https://heyatu.com/zh)**: Hey Atu keeps your AI working on your Mac, from your phone.
+
 Free Skills from [Hey Atu](https://heyatu.com), in the open [Agent Skills](https://agentskills.io) format. They are written for Atu on your Mac, and work in other agents that read `SKILL.md` (Claude Code, Codex, Cursor and more).
 
 | Skill | What it does |
@@ -8,17 +10,16 @@ Free Skills from [Hey Atu](https://heyatu.com), in the open [Agent Skills](https
 
 ## Install
 
-**In Hey Atu:** open the Skill on [heyatu.com/skills](https://heyatu.com/skills), press **Copy to Atu** and paste it to Atu. Or send Atu:
+**In Hey Atu:** [download Hey Atu for Mac](https://heyatu.com), then send Atu:
 
 ```text
-Install this Skill: https://heyatu.com/skills/auto-edit/install.md
+Install this Skill: https://github.com/hancyhxy/heyatu-skills/tree/main/skills/auto-edit
 ```
 
 **From a terminal:**
 
 ```sh
-npx skills add https://heyatu.com      # from the site
-npx skills add heyatu/skills           # from this repository
+npx skills add hancyhxy/heyatu-skills
 ```
 
 Open a new chat after installing; Skills load when a chat starts.
